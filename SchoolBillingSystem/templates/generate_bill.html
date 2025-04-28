@@ -1,0 +1,184 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1>Generate Bill</h1>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" class="needs-validation" novalidate>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="student_id" class="form-label">Student *</label>
+                    <select class="form-select" id="student_id" name="student_id" required>
+                        <option value="" disabled selected>Select Student</option>
+                        {% for student in students %}
+                            <option value="{{ student.id }}" {{ 'selected' if request.args.get('student_id') == student.id }}>
+                                {{ student.name }} - {{ student.admission_number }} (Class {{ student.class_name }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <div class="invalid-feedback">
+                        Please select a student.
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label for="bill_date" class="form-label">Bill Date *</label>
+                    <input type="date" class="form-control" id="bill_date" name="bill_date" value="{{ today_date }}" required>
+                    <div class="invalid-feedback">
+                        Bill date is required.
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label for="due_date" class="form-label">Due Date *</label>
+                    <input type="date" class="form-control" id="due_date" name="due_date" required>
+                    <div class="invalid-feedback">
+                        Due date is required.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Select Fees</h5>
+                </div>
+                <div class="card-body">
+                    {% if fees %}
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 50px;"></th>
+                                        <th>Fee Name</th>
+                                        <th>Amount</th>
+                                        <th>Frequency</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="fee-table-body">
+                                    {% for fee in fees %}
+                                    <tr>
+                                        <td>
+                                            <div class="form-check">
+                                                <input class="form-check-input fee-checkbox" type="checkbox" name="fee_ids" value="{{ fee.id }}" id="fee-{{ fee.id }}">
+                                            </div>
+                                        </td>
+                                        <td>{{ fee.name }}</td>
+                                        <td>₹{{ "%.2f"|format(fee.amount) }}</td>
+                                        <td>{{ fee.frequency }}</td>
+                                        <td>{{ fee.description }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="select-all-fees">
+                                <label class="form-check-label" for="select-all-fees">
+                                    Select All
+                                </label>
+                            </div>
+                            <div class="text-end">
+                                <h5>Total: ₹<span id="total-amount">0.00</span></h5>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            No fee structures found. Please <a href="{{ url_for('add_fee') }}">add a fee structure</a> first.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('bills') }}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Generate Bill</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set default due date (30 days from bill date)
+        const billDateInput = document.getElementById('bill_date');
+        const dueDateInput = document.getElementById('due_date');
+        
+        function updateDueDate() {
+            const billDate = new Date(billDateInput.value);
+            if (!isNaN(billDate.getTime())) {
+                const dueDate = new Date(billDate);
+                dueDate.setDate(dueDate.getDate() + 30);
+                dueDateInput.value = dueDate.toISOString().split('T')[0];
+            }
+        }
+        
+        // Set initial due date
+        updateDueDate();
+        
+        // Update due date when bill date changes
+        billDateInput.addEventListener('change', updateDueDate);
+        
+        // Select all fees functionality
+        const selectAllCheckbox = document.getElementById('select-all-fees');
+        const feeCheckboxes = document.querySelectorAll('.fee-checkbox');
+        
+        selectAllCheckbox.addEventListener('change', function() {
+            feeCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+            updateTotal();
+        });
+        
+        // Calculate total amount
+        const feeRows = document.querySelectorAll('#fee-table-body tr');
+        const totalAmountDisplay = document.getElementById('total-amount');
+        
+        function updateTotal() {
+            let total = 0;
+            feeRows.forEach((row, index) => {
+                const checkbox = row.querySelector('.fee-checkbox');
+                if (checkbox.checked) {
+                    const amountText = row.querySelector('td:nth-child(3)').textContent;
+                    const amount = parseFloat(amountText.replace('₹', '').trim());
+                    if (!isNaN(amount)) {
+                        total += amount;
+                    }
+                }
+            });
+            totalAmountDisplay.textContent = total.toFixed(2);
+        }
+        
+        // Add change event to each fee checkbox
+        feeCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateTotal);
+        });
+        
+        // Form validation
+        const form = document.querySelector('.needs-validation');
+        
+        form.addEventListener('submit', function(event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            
+            // Check if at least one fee is selected
+            const selectedFees = Array.from(feeCheckboxes).filter(checkbox => checkbox.checked);
+            if (selectedFees.length === 0) {
+                event.preventDefault();
+                alert('Please select at least one fee');
+            }
+            
+            form.classList.add('was-validated');
+        });
+    });
+</script>
+{% endblock %}

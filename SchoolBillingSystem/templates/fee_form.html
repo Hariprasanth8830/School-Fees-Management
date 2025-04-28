@@ -1,0 +1,94 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1>{{ 'Edit Fee' if action == 'edit' else 'Add New Fee' }}</h1>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" class="needs-validation" novalidate>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="name" class="form-label">Fee Name *</label>
+                    <input type="text" class="form-control" id="name" name="name" value="{{ fee.name if fee else '' }}" required>
+                    <div class="invalid-feedback">
+                        Fee name is required.
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label for="amount" class="form-label">Amount (₹) *</label>
+                    <input type="number" step="0.01" min="0" class="form-control" id="amount" name="amount" value="{{ fee.amount if fee else '' }}" required>
+                    <div class="invalid-feedback">
+                        Valid amount is required.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="class_applicable" class="form-label">Class Applicable</label>
+                    <select class="form-select" id="class_applicable" name="class_applicable">
+                        <option value="" {{ 'selected' if not fee or not fee.class_applicable }}>All Classes</option>
+                        {% for class_num in range(1, 13) %}
+                            <option value="{{ class_num }}" {{ 'selected' if fee and fee.class_applicable == class_num|string }}>
+                                Class {{ class_num }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="frequency" class="form-label">Frequency *</label>
+                    <select class="form-select" id="frequency" name="frequency" required>
+                        <option value="" disabled {{ 'selected' if not fee }}>Select Frequency</option>
+                        <option value="One-time" {{ 'selected' if fee and fee.frequency == 'One-time' }}>One-time</option>
+                        <option value="Monthly" {{ 'selected' if fee and fee.frequency == 'Monthly' }}>Monthly</option>
+                        <option value="Quarterly" {{ 'selected' if fee and fee.frequency == 'Quarterly' }}>Quarterly</option>
+                        <option value="Half-yearly" {{ 'selected' if fee and fee.frequency == 'Half-yearly' }}>Half-yearly</option>
+                        <option value="Annually" {{ 'selected' if fee and fee.frequency == 'Annually' }}>Annually</option>
+                    </select>
+                    <div class="invalid-feedback">
+                        Frequency is required.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="description" class="form-label">Description</label>
+                <textarea class="form-control" id="description" name="description" rows="3">{{ fee.description if fee else '' }}</textarea>
+            </div>
+            
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('fees') }}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">{{ 'Update Fee' if action == 'edit' else 'Add Fee' }}</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Form validation
+    (function() {
+        'use strict';
+        
+        // Fetch all forms we want to apply validation to
+        var forms = document.querySelectorAll('.needs-validation');
+        
+        // Loop over them and prevent submission
+        Array.prototype.slice.call(forms).forEach(function(form) {
+            form.addEventListener('submit', function(event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                
+                form.classList.add('was-validated');
+            }, false);
+        });
+    })();
+</script>
+{% endblock %}

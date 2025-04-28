@@ -1,0 +1,170 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Payments</h1>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Filter Payments</h5>
+    </div>
+    <div class="card-body">
+        <form id="filterForm" class="row g-3">
+            <div class="col-md-4">
+                <label for="studentFilter" class="form-label">Student</label>
+                <select class="form-select" id="studentFilter">
+                    <option value="">All Students</option>
+                    {% for student_id, student_name in student_names.items() %}
+                    <option value="{{ student_id }}">{{ student_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="dateFrom" class="form-label">From Date</label>
+                <input type="date" class="form-control" id="dateFrom">
+            </div>
+            <div class="col-md-4">
+                <label for="dateTo" class="form-label">To Date</label>
+                <input type="date" class="form-control" id="dateTo">
+            </div>
+            <div class="col-12">
+                <button type="button" id="applyFilter" class="btn btn-primary">Apply Filter</button>
+                <button type="button" id="resetFilter" class="btn btn-secondary">Reset</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if payments %}
+        <div class="table-responsive">
+            <table class="table table-hover" id="paymentsTable">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Student</th>
+                        <th>Bill Number</th>
+                        <th>Amount</th>
+                        <th>Method</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payment in payments %}
+                    <tr class="payment-row" data-student-id="{{ payment.student_id }}">
+                        <td>{{ payment.date }}</td>
+                        <td>{{ student_names.get(payment.student_id, 'Unknown') }}</td>
+                        <td>
+                            <a href="{{ url_for('view_bill', bill_id=payment.bill_id) }}">
+                                {{ bill_numbers.get(payment.bill_id, 'Unknown') }}
+                            </a>
+                        </td>
+                        <td>₹{{ "%.2f"|format(payment.amount) }}</td>
+                        <td>{{ payment.method }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="fw-bold">
+                        <td colspan="3" class="text-end">Total:</td>
+                        <td colspan="2">₹{{ "%.2f"|format(payments|sum(attribute='amount')) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-hand-holding-usd fa-4x mb-3 text-muted"></i>
+            <h4>No payments found</h4>
+            <p>Payments will appear here when bills are marked as paid.</p>
+            <a href="{{ url_for('bills') }}" class="btn btn-primary mt-2">
+                <i class="fas fa-file-invoice-dollar me-2"></i>View Bills
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Filter functionality
+        const applyFilterBtn = document.getElementById('applyFilter');
+        const resetFilterBtn = document.getElementById('resetFilter');
+        const studentFilter = document.getElementById('studentFilter');
+        const dateFrom = document.getElementById('dateFrom');
+        const dateTo = document.getElementById('dateTo');
+        const tableRows = document.querySelectorAll('#paymentsTable tbody tr');
+        
+        applyFilterBtn.addEventListener('click', function() {
+            const studentId = studentFilter.value;
+            const fromDate = dateFrom.value ? new Date(dateFrom.value) : null;
+            const toDate = dateTo.value ? new Date(dateTo.value) : null;
+            
+            tableRows.forEach(function(row) {
+                let showRow = true;
+                
+                // Filter by student
+                if (studentId && row.dataset.studentId !== studentId) {
+                    showRow = false;
+                }
+                
+                // Filter by date range
+                if (showRow && (fromDate || toDate)) {
+                    const dateCell = row.cells[0].textContent;
+                    const rowDate = new Date(dateCell);
+                    
+                    if (fromDate && rowDate < fromDate) {
+                        showRow = false;
+                    }
+                    
+                    if (toDate && rowDate > toDate) {
+                        showRow = false;
+                    }
+                }
+                
+                // Show or hide row
+                row.style.display = showRow ? '' : 'none';
+            });
+            
+            // Update total
+            updateTotal();
+        });
+        
+        resetFilterBtn.addEventListener('click', function() {
+            studentFilter.value = '';
+            dateFrom.value = '';
+            dateTo.value = '';
+            
+            // Show all rows
+            tableRows.forEach(function(row) {
+                row.style.display = '';
+            });
+            
+            // Update total
+            updateTotal();
+        });
+        
+        function updateTotal() {
+            let total = 0;
+            tableRows.forEach(function(row) {
+                if (row.style.display !== 'none') {
+                    const amountCell = row.cells[3].textContent;
+                    const amount = parseFloat(amountCell.replace('₹', '').trim());
+                    if (!isNaN(amount)) {
+                        total += amount;
+                    }
+                }
+            });
+            
+            // Update total in footer
+            const footerTotal = document.querySelector('#paymentsTable tfoot td:nth-child(2)');
+            if (footerTotal) {
+                footerTotal.textContent = '₹' + total.toFixed(2);
+            }
+        }
+    });
+</script>
+{% endblock %}

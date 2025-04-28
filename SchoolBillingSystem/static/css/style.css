@@ -1,0 +1,80 @@
+/* Custom styles for School Billing System */
+
+/* Dashboard styles */
+.dashboard-card {
+    transition: transform 0.3s ease;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-5px);
+}
+
+/* Bill print styles */
+.bill-content {
+    font-family: 'Arial', sans-serif;
+}
+
+.bill-content .table-borderless th {
+    font-weight: 600;
+}
+
+/* Dark mode overrides for better readability */
+.table-hover tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.075);
+}
+
+/* Make the bills page more readable */
+.bill-row td {
+    vertical-align: middle;
+}
+
+/* Improve form styles */
+.form-label {
+    font-weight: 500;
+}
+
+.form-control:focus, .form-select:focus {
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Search results styling */
+#searchResults .list-group-item-action:hover {
+    background-color: rgba(255, 255, 255, 0.075);
+}
+
+/* Print-specific styles */
+@media print {
+    body {
+        background-color: white !important;
+        color: black !important;
+    }
+    
+    .card {
+        border: 1px solid #dee2e6 !important;
+    }
+    
+    .table {
+        color: black !important;
+    }
+    
+    .badge-success {
+        background-color: #28a745 !important;
+        color: white !important;
+    }
+    
+    .badge-danger {
+        background-color: #dc3545 !important;
+        color: white !important;
+    }
+    
+    .no-print {
+        display: none !important;
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+}

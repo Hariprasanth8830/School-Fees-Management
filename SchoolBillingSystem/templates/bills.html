@@ -1,0 +1,221 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Bills</h1>
+    <a href="{{ url_for('generate_bill') }}" class="btn btn-primary">
+        <i class="fas fa-file-invoice me-2"></i>Generate New Bill
+    </a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Filter Bills</h5>
+    </div>
+    <div class="card-body">
+        <form id="filterForm" class="row g-3">
+            <div class="col-md-3">
+                <label for="statusFilter" class="form-label">Status</label>
+                <select class="form-select" id="statusFilter">
+                    <option value="">All</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Unpaid">Unpaid</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="dateFrom" class="form-label">From Date</label>
+                <input type="date" class="form-control" id="dateFrom">
+            </div>
+            <div class="col-md-3">
+                <label for="dateTo" class="form-label">To Date</label>
+                <input type="date" class="form-control" id="dateTo">
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="button" id="applyFilter" class="btn btn-primary w-100">Apply Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if bills %}
+        <div class="table-responsive">
+            <table class="table table-hover" id="billsTable">
+                <thead>
+                    <tr>
+                        <th>Bill Number</th>
+                        <th>Student</th>
+                        <th>Date</th>
+                        <th>Due Date</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bill in bills %}
+                    <tr class="bill-row" data-status="{{ bill.status }}">
+                        <td>{{ bill.bill_number }}</td>
+                        <td>{{ student_names.get(bill.student_id, 'Unknown') }}</td>
+                        <td>{{ bill.date }}</td>
+                        <td>{{ bill.due_date }}</td>
+                        <td>₹{{ "%.2f"|format(bill.total_amount) }}</td>
+                        <td>
+                            {% if bill.status == 'Paid' %}
+                            <span class="badge bg-success">Paid</span>
+                            {% else %}
+                            <span class="badge bg-danger">Unpaid</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('view_bill', bill_id=bill.id) }}" class="btn btn-sm btn-outline-info">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#statusModal-{{ bill.id }}">
+                                    <i class="fas fa-money-check-alt"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal-{{ bill.id }}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Payment Status Modal -->
+                            <div class="modal fade" id="statusModal-{{ bill.id }}" tabindex="-1" aria-labelledby="statusModalLabel-{{ bill.id }}" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="statusModalLabel-{{ bill.id }}">Update Payment Status</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <form action="{{ url_for('update_bill_status', bill_id=bill.id) }}" method="post" id="statusForm-{{ bill.id }}">
+                                                <div class="mb-3">
+                                                    <label for="status-{{ bill.id }}" class="form-label">Status</label>
+                                                    <select class="form-select" id="status-{{ bill.id }}" name="status" required>
+                                                        <option value="Unpaid" {{ 'selected' if bill.status == 'Unpaid' }}>Unpaid</option>
+                                                        <option value="Paid" {{ 'selected' if bill.status == 'Paid' }}>Paid</option>
+                                                    </select>
+                                                </div>
+                                                
+                                                <div id="payment-details-{{ bill.id }}" class="{{ 'd-none' if bill.status == 'Unpaid' }}">
+                                                    <div class="mb-3">
+                                                        <label for="payment_date-{{ bill.id }}" class="form-label">Payment Date</label>
+                                                        <input type="date" class="form-control" id="payment_date-{{ bill.id }}" name="payment_date" value="{{ bill.payment_date if bill.payment_date else '' }}">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="payment_method-{{ bill.id }}" class="form-label">Payment Method</label>
+                                                        <select class="form-select" id="payment_method-{{ bill.id }}" name="payment_method">
+                                                            <option value="Cash" {{ 'selected' if bill.payment_method == 'Cash' }}>Cash</option>
+                                                            <option value="Bank Transfer" {{ 'selected' if bill.payment_method == 'Bank Transfer' }}>Bank Transfer</option>
+                                                            <option value="Cheque" {{ 'selected' if bill.payment_method == 'Cheque' }}>Cheque</option>
+                                                            <option value="Online Payment" {{ 'selected' if bill.payment_method == 'Online Payment' }}>Online Payment</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </form>
+                                            
+                                            <script>
+                                                document.getElementById('status-{{ bill.id }}').addEventListener('change', function() {
+                                                    var paymentDetails = document.getElementById('payment-details-{{ bill.id }}');
+                                                    if (this.value === 'Paid') {
+                                                        paymentDetails.classList.remove('d-none');
+                                                    } else {
+                                                        paymentDetails.classList.add('d-none');
+                                                    }
+                                                });
+                                            </script>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" form="statusForm-{{ bill.id }}" class="btn btn-primary">Save Changes</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Delete Confirmation Modal -->
+                            <div class="modal fade" id="deleteModal-{{ bill.id }}" tabindex="-1" aria-labelledby="deleteModalLabel-{{ bill.id }}" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="deleteModalLabel-{{ bill.id }}">Confirm Deletion</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            Are you sure you want to delete Bill <strong>{{ bill.bill_number }}</strong>? This action cannot be undone.
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <form action="{{ url_for('delete_bill', bill_id=bill.id) }}" method="post">
+                                                <button type="submit" class="btn btn-danger">Delete</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-file-invoice-dollar fa-4x mb-3 text-muted"></i>
+            <h4>No bills found</h4>
+            <p>Get started by generating a new bill.</p>
+            <a href="{{ url_for('generate_bill') }}" class="btn btn-primary mt-2">
+                <i class="fas fa-file-invoice me-2"></i>Generate New Bill
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Filter functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const applyFilterBtn = document.getElementById('applyFilter');
+        const statusFilter = document.getElementById('statusFilter');
+        const dateFrom = document.getElementById('dateFrom');
+        const dateTo = document.getElementById('dateTo');
+        const tableRows = document.querySelectorAll('#billsTable tbody tr');
+        
+        applyFilterBtn.addEventListener('click', function() {
+            const status = statusFilter.value;
+            const fromDate = dateFrom.value ? new Date(dateFrom.value) : null;
+            const toDate = dateTo.value ? new Date(dateTo.value) : null;
+            
+            tableRows.forEach(function(row) {
+                let showRow = true;
+                
+                // Filter by status
+                if (status && row.dataset.status !== status) {
+                    showRow = false;
+                }
+                
+                // Filter by date range
+                if (showRow && (fromDate || toDate)) {
+                    const dateCell = row.cells[2].textContent;
+                    const rowDate = new Date(dateCell);
+                    
+                    if (fromDate && rowDate < fromDate) {
+                        showRow = false;
+                    }
+                    
+                    if (toDate && rowDate > toDate) {
+                        showRow = false;
+                    }
+                }
+                
+                // Show or hide row
+                row.style.display = showRow ? '' : 'none';
+            });
+        });
+    });
+</script>
+{% endblock %}
